@@ -38,40 +38,43 @@ GitHub 形式在安装前无法预读包信息（不会显示版本号），装�
 | 链接 / 焦点环 | 换成品牌蓝，深色模式用浅一档的蓝保证可读性 |
 | 侧栏 | 浅蓝色底、选中项与悬停项的蓝色底纹 |
 | 会话 | 用户气泡、命中高亮、输入卡片、代码块与行内代码的浅蓝灰底 |
-| 品牌标识 | 侧栏 24px、首页 34px 换成 DeepSeek 官方鲸鱼标（品牌蓝单色）；侧栏字标保持官方 DeepSeek Harness 字标 |
+| 品牌标识 | 侧栏 24px、首页 34px 换成 DeepSeek 官方鲸鱼标（品牌蓝单色）；侧栏字标仍是官方 DeepSeek Harness 真迹，只把颜色换成品牌蓝 |
 | 新对话行图标 | 工作区选择器的文件夹图标、模式（Agent Preset）选择器的前置图标改成品牌蓝；只改颜色，形状、大小、位置不变，右侧下拉箭头不动 |
 
 浅色 / 深色两套值都会提供，跟随「设置 → 通用 → 外观」的选择，无需额外配置。
 
 实现方式只有三件事：向主题服务叠加一层**语义 token 覆盖**（`ctx.theme.overrideTokens`）、
-一条只命中新对话行两个图标的一行样式、以及往两个品牌插槽（`sidebar.brand.mark`、
-`conversation.hero.brand.mark`）注册组件。不改布局、不写宿主 DOM，所以 Harness 升级时最坏情况是
-某个颜色回落到自带配色，不会白屏或报错。
+一张只染三处宿主图形（新对话行两个图标 + 侧栏字标）的样式表、以及往两个品牌插槽
+（`sidebar.brand.mark`、`conversation.hero.brand.mark`）注册组件。不改布局、不写宿主 DOM，
+所以 Harness 升级时最坏情况是某个颜色回落到自带配色，不会白屏或报错。
 
 ## 实现要点
 
 - **token 覆盖**：一层 29 个 `{ light, dark }` 语义 token，由主题服务合成进当前快照；
   主题注册表本身不动，禁用后整层撤回。
-- **两个图标用一行样式染色**：工作区的文件夹图标和模式选择器的前置图标属于宿主 chrome，
-  不是插槽，也没有独立 token（两者都跟 `--dsw-alias-label-primary` 走），改 token 会波及全站文字。
-  所以只注入一条限定在 `heroWorkspaceRow` 行内的规则，靠 CSS Module 类名的**名字部分**匹配
-  （`_folder`、`_seatIcon`，哈希前缀随构建变，名字稳定），且只设 `color`：
+- **三处宿主图形用一张样式表染色**：工作区的文件夹图标、模式选择器的前置图标，以及侧栏字标，
+  都不归插槽管，形状和位置由宿主写死，而且都跟 `--dsw-alias-label-primary` 走 —— 改 token 会
+  波及全站文字。所以只注入一张样式表，靠 CSS Module 类名的**名字部分**匹配（哈希前缀随构建变，
+  名字稳定），且只设 `color`：
 
   ```css
   [class*="heroWorkspaceRow"] [class*="_folder"]  { color: var(--dsw-alias-brand-primary) }
   [class*="heroWorkspaceRow"] [class*="_seatIcon"]{ color: var(--dsw-alias-brand-primary) }
+  [class*="_brandName"]                           { color: var(--dsw-alias-brand-primary) }
   ```
 
-  两个选择器的权重都高于宿主原来的一级类规则，不需要 `!important`；`_chevron` 不在选择器里，
-  所以右侧箭头保持原色。样式标签由 effect 持有，停用插件时整个移除。
-  宿主若在某个版本改掉这两个类名，这两条会静默失效、图标退回默认色，其余部分不受影响。
+  字标本身是官方 `BrandWordmark` 的矢量字形，path 填的是 `currentColor`，所以改 `color` 只换色、
+  不动字形；行内图标那两条的权重高于宿主原来的一级类规则，不需要 `!important`。`_chevron`
+  不在选择器里，所以右侧箭头保持原色。样式标签由 effect 持有，停用插件时整个移除。
+  宿主若在某个版本改掉这些类名，对应规则会静默失效、图形退回默认色，其余部分不受影响。
 - **品牌插槽按 `priority: -1` 覆盖**：single 插槽同一优先级只允许一个占用者，且**数值最小的渲染**。
   官方的 `@deepseek-ai/dsh-client-ui-brand-official` 已经以默认优先级 0 注册了两个座位：
   `sidebar.brand.mark`（鱼形标）和 `sidebar.brand.name`（DeepSeek Harness 字标）。
-  本插件只把**图标**那个座位下沉一级遮住，**字标座位一个字节都不碰**，所以侧栏显示的是官方
-  `BrandWordmark` 真迹；首页 `conversation.hero.brand.mark` 目前没有占用者，用同一个优先级保持一致。
+  本插件只把**图标**那个座位下沉一级遮住，**字标座位不注册任何东西**，所以侧栏显示的是官方
+  `BrandWordmark` 真迹（只由样式表换了颜色）；首页 `conversation.hero.brand.mark` 目前没有
+  占用者，用同一个优先级保持一致。
   不写 priority 会和官方占用者撞成 `single slot ... already has a registration at priority 0`。
-- **禁用即还原**：token 层、图标样式和两个插槽注册都由 effect 持有，停用插件后官方标识和原配色自动回来。
+- **禁用即还原**：token 层、样式表和两个插槽注册都由 effect 持有，停用插件后官方标识和原配色自动回来。
 
 ## 结构
 

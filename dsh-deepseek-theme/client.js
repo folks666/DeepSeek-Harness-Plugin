@@ -81,25 +81,27 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 
-		//#region hero icon accents
+		//#region accent sheet
 		/**
-		 * The two leading glyphs of the new-session row are host chrome, not slots,
-		 * and both paint `--dsw-alias-label-primary` like every other control, so no
-		 * token can tint them without tinting the whole UI. One scoped sheet does it
-		 * instead, matching the CSS-module *name* part of the classes (the hash prefix
-		 * differs per build) and only inside the hero row:
+		 * A few shipped glyphs paint `--dsw-alias-label-primary` — the token every
+		 * label uses — so no token layer can tint them without tinting the whole UI.
+		 * One scoped sheet does it instead, matching the CSS-module *name* part of the
+		 * classes (the hash prefix differs per build):
 		 *
-		 * - `_folder` is the workspace picker's folder glyph (`HeroShell.module.css`);
-		 * - `_seatIcon` is the agent-preset chip's leading glyph
-		 *   (`AgentPresetSeat.module.css`).
+		 * - `_folder` is the workspace picker's folder glyph (`HeroShell.module.css`)
+		 *   and `_seatIcon` the agent-preset chip's leading glyph
+		 *   (`AgentPresetSeat.module.css`), both only inside the new-session row;
+		 * - `_brandName` wraps whatever the `sidebar.brand.name` seat renders, which is
+		 *   the official wordmark artwork drawn in `currentColor`.
 		 *
 		 * Only `color` is set, so shape, size and layout stay exactly as shipped; the
-		 * chevron classes (`_chevron`) are deliberately left alone. The two selectors
+		 * chevron classes (`_chevron`) are deliberately left alone. These selectors
 		 * outrank the single-class host rules, so no `!important` is needed.
 		 */
-		const ICON_CSS = [
+		const ACCENT_CSS = [
 			'[class*="heroWorkspaceRow"] [class*="_folder"]{color:var(--dsw-alias-brand-primary)}',
-			'[class*="heroWorkspaceRow"] [class*="_seatIcon"]{color:var(--dsw-alias-brand-primary)}'
+			'[class*="heroWorkspaceRow"] [class*="_seatIcon"]{color:var(--dsw-alias-brand-primary)}',
+			'[class*="_brandName"]{color:var(--dsw-alias-brand-primary)}'
 		].join("\n");
 		//#endregion
 
@@ -168,11 +170,12 @@ window.__ModuleLoader__.load({
 		/**
 		 * Mount the browser half.
 		 *
-		 * One token layer plus two brand seats, each owned by an effect so disabling
-		 * the plugin restores the stock palette and marks. The sidebar brand *name*
-		 * stays untouched on purpose: the official `ui-brand-official` occupant draws
-		 * the real DeepSeek Harness wordmark there, which is artwork this plugin must
-		 * not reproduce.
+		 * One token layer, one accent sheet and two brand seats, each owned by an
+		 * effect so disabling the plugin restores the stock palette and marks. The
+		 * sidebar brand *name* seat itself stays untouched: the official
+		 * `ui-brand-official` occupant draws the real DeepSeek Harness wordmark there,
+		 * which is artwork this plugin must not reproduce. The accent sheet only
+		 * re-points that artwork's `currentColor` at the brand blue.
 		 * @param ctx - the browser plugin context.
 		 */
 		function apply(ctx) {
@@ -183,11 +186,11 @@ window.__ModuleLoader__.load({
 			ctx.effect(() => {
 				const tag = document.createElement("style");
 				tag.dataset.plugin = "dsh-deepseek-theme";
-				tag.dataset.pluginCss = "dsh-deepseek-theme/hero-icons.css";
-				tag.textContent = ICON_CSS;
+				tag.dataset.pluginCss = "dsh-deepseek-theme/accents.css";
+				tag.textContent = ACCENT_CSS;
 				document.head.appendChild(tag);
 				return () => tag.remove();
-			}, "dsh-deepseek-theme: hero icon accents");
+			}, "dsh-deepseek-theme: accent sheet");
 			ctx.slots.inject(
 				"sidebar.brand.mark",
 				() => ctx.slots.register({ name: "sidebar.brand.mark", priority: PRIORITY }, SidebarMark),
