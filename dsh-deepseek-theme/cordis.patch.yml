@@ -1,0 +1,4 @@
+- insert:
+    - id: deepseek-theme
+      name: dsh-deepseek-theme
+      disabled: true
